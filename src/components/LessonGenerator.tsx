@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, Brain } from 'lucide-react';
+import { ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, Brain, AlertCircle } from 'lucide-react';
 import { AnimatedCharacter } from './AnimatedCharacter';
 import { generateLesson } from '@/utils/geminiAPI';
 import { toast } from 'sonner';
@@ -17,35 +17,69 @@ export function LessonGenerator() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('intro');
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (student && selectedSubject && selectedTopic && apiKey) {
-      generateLesson(apiKey, student, selectedSubject, selectedTopic)
-        .then((response) => {
-          if (response.error) {
-            toast.error(response.error);
-            return;
-          }
-          
-          setLesson(response.content as LessonContent);
-          
-          // Add achievement
-          addAchievement({
-            id: 'first-lesson',
-            title: 'First Lesson Completed',
-            description: `You completed your first lesson on ${selectedTopic.name}!`,
-            icon: '📘',
-            earned: true
-          });
-        })
-        .catch((error) => {
-          console.error('Error generating lesson:', error);
-          toast.error('Failed to generate lesson. Please try again.');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    if (!student || !selectedSubject || !selectedTopic) {
+      setError('Missing required information. Please go back and complete all steps.');
+      setIsLoading(false);
+      return;
     }
+
+    if (!apiKey) {
+      setError('No API key provided. Please go back and enter your Gemini API key.');
+      setIsLoading(false);
+      return;
+    }
+
+    console.log('LessonGenerator - Starting lesson generation with:', {
+      student: student?.name,
+      subject: selectedSubject?.name,
+      topic: selectedTopic?.name,
+      apiKey: apiKey ? 'API Key present' : 'No API Key'
+    });
+
+    setIsLoading(true);
+    setError(null);
+
+    generateLesson(apiKey, student, selectedSubject, selectedTopic)
+      .then((response) => {
+        console.log('Lesson generation response:', response);
+        
+        if (response.error) {
+          console.error('Error in lesson generation:', response.error);
+          setError(response.error);
+          toast.error(`Error: ${response.error}`);
+          return;
+        }
+        
+        if (!response.content || Object.keys(response.content).length === 0) {
+          setError('Received empty lesson content. Please try again.');
+          toast.error('Received empty lesson content');
+          return;
+        }
+        
+        setLesson(response.content as LessonContent);
+        
+        // Add achievement
+        addAchievement({
+          id: 'first-lesson',
+          title: 'First Lesson Completed',
+          description: `You completed your first lesson on ${selectedTopic.name}!`,
+          icon: '📘',
+          earned: true
+        });
+
+        toast.success('Lesson generated successfully!');
+      })
+      .catch((error) => {
+        console.error('Exception in lesson generation:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error occurred');
+        toast.error('Failed to generate lesson. Please try again.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [student, selectedSubject, selectedTopic, apiKey, addAchievement]);
 
   const handleQuizStart = () => {
@@ -56,6 +90,36 @@ export function LessonGenerator() {
     return content.split('\n').map((paragraph, index) => (
       <p key={index} className="mb-4">{paragraph}</p>
     ));
+  };
+
+  const handleRetry = () => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Re-attempt to generate the lesson
+    if (student && selectedSubject && selectedTopic && apiKey) {
+      generateLesson(apiKey, student, selectedSubject, selectedTopic)
+        .then((response) => {
+          if (response.error) {
+            setError(response.error);
+            toast.error(`Error: ${response.error}`);
+            return;
+          }
+          
+          setLesson(response.content as LessonContent);
+          toast.success('Lesson generated successfully!');
+        })
+        .catch((error) => {
+          setError(error instanceof Error ? error.message : 'Unknown error occurred');
+          toast.error('Failed to generate lesson. Please try again.');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setError('Missing required information. Please go back and complete all steps.');
+      setIsLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -88,6 +152,34 @@ export function LessonGenerator() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
+        <Card className="w-full shadow-lg border-2 border-destructive/10">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="flex justify-center mb-6">
+              <AnimatedCharacter expression="sad" />
+            </div>
+            <div className="text-destructive mb-4">
+              <AlertCircle className="h-12 w-12 mx-auto" />
+            </div>
+            <h2 className="text-2xl font-bold mb-4">Unable to Generate Lesson</h2>
+            <p className="mb-6">{error}</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Button variant="outline" onClick={() => setStep('apiKey')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Change API Key
+              </Button>
+              <Button onClick={handleRetry}>
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!lesson) {
     return (
       <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
@@ -99,9 +191,9 @@ export function LessonGenerator() {
             <h2 className="text-2xl font-bold mb-4">Unable to Generate Lesson</h2>
             <p className="mb-6">There was a problem creating your lesson. Please try again.</p>
             <div className="flex justify-center gap-4">
-              <Button onClick={() => setStep('topic')}>
+              <Button onClick={() => setStep('apiKey')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Topics
+                Back to API Key
               </Button>
             </div>
           </CardContent>
@@ -113,7 +205,7 @@ export function LessonGenerator() {
   return (
     <div className="container max-w-5xl mx-auto px-4 py-6 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" onClick={() => setStep('topic')}>
+        <Button variant="ghost" onClick={() => setStep('apiKey')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>

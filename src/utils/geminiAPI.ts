@@ -9,6 +9,17 @@ export async function generateLesson(
   topic: Topic
 ): Promise<GeminiAPIResponse> {
   try {
+    console.log('Generating lesson with:', { 
+      apiKey: apiKey ? 'API Key provided' : 'No API Key', 
+      student, 
+      subject, 
+      topic 
+    });
+
+    if (!apiKey) {
+      throw new Error('API key is required');
+    }
+
     // Make the actual API request to Gemini
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -50,9 +61,18 @@ export async function generateLesson(
       }),
     });
     
+    if (!response.ok) {
+      console.error('API response not OK:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Error response body:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
+    console.log('Gemini API Response:', data);
     
     if (data.error) {
+      console.error('API returned error:', data.error);
       throw new Error(data.error.message || 'Error generating lesson');
     }
     
@@ -60,6 +80,7 @@ export async function generateLesson(
     const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!textContent) {
+      console.error('No text content in response:', data);
       throw new Error('Invalid response format from Gemini API');
     }
     
@@ -69,14 +90,17 @@ export async function generateLesson(
       const jsonContent = jsonMatch ? jsonMatch[0] : null;
       
       if (!jsonContent) {
+        console.error('Could not find JSON in text:', textContent);
         throw new Error('Could not find JSON content in the response');
       }
       
       // Parse the JSON content
       const lessonContent = JSON.parse(jsonContent) as LessonContent;
+      console.log('Successfully parsed lesson content:', lessonContent);
       return { content: lessonContent };
     } catch (parseError) {
       console.error('Error parsing lesson JSON:', parseError);
+      console.log('Raw text content:', textContent);
       
       // Fallback to a structured format if parsing fails
       const fallbackLesson: LessonContent = {
@@ -116,13 +140,14 @@ export async function generateLesson(
         relatedTopics: ['Advanced concepts', 'Historical development', 'Future trends']
       };
       
+      console.log('Using fallback lesson content:', fallbackLesson);
       return { content: fallbackLesson };
     }
   } catch (error) {
     console.error('Error generating lesson:', error);
     return { 
       content: {} as LessonContent, 
-      error: 'Failed to generate lesson. Please check your API key and try again.' 
+      error: error instanceof Error ? error.message : 'Failed to generate lesson. Please check your API key and try again.' 
     };
   }
 }
@@ -136,6 +161,17 @@ export async function generateQuiz(
   numberOfQuestions: number = 5
 ): Promise<GeminiAPIResponse> {
   try {
+    console.log('Generating quiz with:', { 
+      apiKey: apiKey ? 'API Key provided' : 'No API Key', 
+      student, 
+      subject, 
+      topic 
+    });
+
+    if (!apiKey) {
+      throw new Error('API key is required');
+    }
+
     // Make the actual API request to Gemini
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -182,9 +218,18 @@ export async function generateQuiz(
       }),
     });
     
+    if (!response.ok) {
+      console.error('API response not OK:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Error response body:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+    
     const data = await response.json();
+    console.log('Gemini API Response for quiz:', data);
     
     if (data.error) {
+      console.error('API returned error:', data.error);
       throw new Error(data.error.message || 'Error generating quiz');
     }
     
@@ -192,6 +237,7 @@ export async function generateQuiz(
     const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!textContent) {
+      console.error('No text content in quiz response:', data);
       throw new Error('Invalid response format from Gemini API');
     }
     
@@ -201,14 +247,17 @@ export async function generateQuiz(
       const jsonContent = jsonMatch ? jsonMatch[0] : null;
       
       if (!jsonContent) {
+        console.error('Could not find JSON array in text:', textContent);
         throw new Error('Could not find JSON content in the response');
       }
       
       // Parse the JSON content
       const quizQuestions = JSON.parse(jsonContent) as QuizQuestion[];
+      console.log('Successfully parsed quiz questions:', quizQuestions);
       return { content: quizQuestions };
     } catch (parseError) {
       console.error('Error parsing quiz JSON:', parseError);
+      console.log('Raw text content:', textContent);
       
       // Fallback to a structured format if parsing fails
       const mockQuestions: QuizQuestion[] = [
@@ -268,13 +317,14 @@ export async function generateQuiz(
         }
       ];
       
+      console.log('Using fallback quiz questions:', mockQuestions);
       return { content: mockQuestions };
     }
   } catch (error) {
     console.error('Error generating quiz:', error);
     return { 
       content: [] as QuizQuestion[], 
-      error: 'Failed to generate quiz. Please check your API key and try again.' 
+      error: error instanceof Error ? error.message : 'Failed to generate quiz. Please check your API key and try again.' 
     };
   }
 }
@@ -282,9 +332,23 @@ export async function generateQuiz(
 // Function to validate the API key
 export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
+    console.log('Validating API key');
+
+    if (!apiKey) {
+      console.error('No API key provided');
+      return false;
+    }
+
     // Make a simple request to the Gemini API to check if the key is valid
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    return response.status === 200;
+    
+    if (!response.ok) {
+      console.error('API key validation failed:', response.status, response.statusText);
+      return false;
+    }
+
+    console.log('API key validation successful');
+    return true;
   } catch (error) {
     console.error('Error validating API key:', error);
     return false;

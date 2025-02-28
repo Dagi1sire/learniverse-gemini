@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StudentProvider, useStudent } from '@/context/StudentContext';
 import { OnboardingForm } from '@/components/OnboardingForm';
 import { SubjectSelection } from '@/components/SubjectSelection';
@@ -7,6 +7,7 @@ import { APIKeyInput } from '@/components/APIKeyInput';
 import { LessonGenerator } from '@/components/LessonGenerator';
 import { Quiz } from '@/components/Quiz';
 import { Topic } from '@/types';
+import { toast } from 'sonner';
 
 // Topics for demo purposes
 const topics: Record<string, Topic[]> = {
@@ -126,6 +127,7 @@ const topics: Record<string, Topic[]> = {
 
 function LearningApp() {
   const { student, selectedSubject, step, setStep, setSelectedTopic } = useStudent();
+  const [debugMessage, setDebugMessage] = useState<string | null>(null);
   
   // For demo purposes, automatically select a topic when a subject is chosen
   useEffect(() => {
@@ -139,8 +141,28 @@ function LearningApp() {
     }
   }, [selectedSubject, step, setSelectedTopic, setStep]);
   
+  // Debug information
+  useEffect(() => {
+    // Log the current state for debugging
+    console.log('Current state:', { student, selectedSubject, step });
+    
+    if (!student && step !== 'onboarding') {
+      setDebugMessage('No student information. Please complete the onboarding first.');
+    } else if (!selectedSubject && step !== 'onboarding' && step !== 'subject') {
+      setDebugMessage('No subject selected. Please select a subject first.');
+    } else {
+      setDebugMessage(null);
+    }
+  }, [student, selectedSubject, step]);
+  
   return (
     <div className="min-h-screen">
+      {debugMessage && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          {debugMessage}
+        </div>
+      )}
+      
       {step === 'onboarding' && <OnboardingForm />}
       {step === 'subject' && <SubjectSelection />}
       {step === 'apiKey' && <APIKeyInput />}
