@@ -5,7 +5,8 @@ const characterExpressions = {
   default: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant04&eyebrows=variant01&backgroundColor=b6e3f4",
   happy: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant06&eyebrows=variant10&mouth=variant03&backgroundColor=b6e3f4",
   thinking: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant07&eyebrows=variant06&mouth=variant08&backgroundColor=b6e3f4",
-  excited: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant10&eyebrows=variant10&mouth=variant02&backgroundColor=b6e3f4"
+  excited: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant10&eyebrows=variant10&mouth=variant02&backgroundColor=b6e3f4",
+  sad: "https://api.dicebear.com/7.x/thumbs/svg?seed=Felix&shirt=variant03&shirtColor=85c5f5&eyes=variant02&eyebrows=variant02&mouth=variant09&backgroundColor=b6e3f4"
 };
 
 type CharacterExpression = keyof typeof characterExpressions;
