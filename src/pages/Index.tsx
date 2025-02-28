@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { StudentProvider, useStudent } from '@/context/StudentContext';
 import { OnboardingForm } from '@/components/OnboardingForm';
 import { SubjectSelection } from '@/components/SubjectSelection';
