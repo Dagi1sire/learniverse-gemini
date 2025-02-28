@@ -20,8 +20,8 @@ export async function generateLesson(
       throw new Error('API key is required');
     }
 
-    // Make the actual API request to Gemini
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+    // Updated to use gemini-1.5-pro model instead of gemini-pro
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -172,8 +172,8 @@ export async function generateQuiz(
       throw new Error('API key is required');
     }
 
-    // Make the actual API request to Gemini
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+    // Updated to use gemini-1.5-pro model instead of gemini-pro
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
