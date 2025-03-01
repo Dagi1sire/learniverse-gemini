@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useStudent } from '@/context/StudentContext';
 import { QuizQuestion, QuizResult } from '@/types';
@@ -16,7 +15,7 @@ import { generateQuiz } from '@/utils/geminiAPI';
 import { toast } from 'sonner';
 
 export function Quiz() {
-  const { student, selectedSubject, selectedTopic, apiKey, setStep, addAchievement } = useStudent();
+  const { student, selectedSubject, selectedTopic, apiKey, setStep, addAchievement, selectedProviders } = useStudent();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(string | number)[]>([]);
@@ -27,7 +26,9 @@ export function Quiz() {
 
   useEffect(() => {
     if (student && selectedSubject && selectedTopic && apiKey) {
-      generateQuiz(apiKey, student, selectedSubject, selectedTopic)
+      const provider = selectedProviders.length > 0 ? selectedProviders[0] : 'gemini';
+      
+      generateQuiz(apiKey, student, selectedSubject, selectedTopic, 5, provider)
         .then((response) => {
           if (response.error) {
             toast.error(response.error);
@@ -45,7 +46,7 @@ export function Quiz() {
           setIsLoading(false);
         });
     }
-  }, [student, selectedSubject, selectedTopic, apiKey]);
+  }, [student, selectedSubject, selectedTopic, apiKey, selectedProviders]);
 
   const handleAnswerChange = (answer: string | number) => {
     const newAnswers = [...answers];
@@ -72,7 +73,6 @@ export function Quiz() {
   const handleSubmitQuiz = () => {
     setIsSubmitting(true);
     
-    // Calculate results
     let correctCount = 0;
     let incorrectCount = 0;
     
@@ -86,7 +86,6 @@ export function Quiz() {
     
     const score = (correctCount / questions.length) * 100;
     
-    // Generate feedback based on score
     let feedback = '';
     if (score >= 90) {
       feedback = 'Outstanding! You have an excellent understanding of this topic.';
@@ -108,7 +107,6 @@ export function Quiz() {
     
     setQuizResult(result);
     
-    // Award achievement based on score
     if (score >= 80) {
       addAchievement({
         id: 'quiz-master',

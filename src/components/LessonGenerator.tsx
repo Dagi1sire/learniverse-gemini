@@ -1,18 +1,21 @@
 
 import { useEffect, useState } from 'react';
 import { useStudent } from '@/context/StudentContext';
-import { LessonContent } from '@/types';
+import { LessonContent, LessonImage, LessonWorksheet } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, Brain, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, 
+  Brain, AlertCircle, FileText, Image as ImageIcon
+} from 'lucide-react';
 import { AnimatedCharacter } from './AnimatedCharacter';
 import { generateLesson } from '@/utils/geminiAPI';
 import { toast } from 'sonner';
 
 export function LessonGenerator() {
-  const { student, selectedSubject, selectedTopic, apiKey, setStep, addAchievement } = useStudent();
+  const { student, selectedSubject, selectedTopic, apiKey, setStep, addAchievement, selectedProviders } = useStudent();
   const [lesson, setLesson] = useState<LessonContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('intro');
@@ -27,7 +30,7 @@ export function LessonGenerator() {
     }
 
     if (!apiKey) {
-      setError('No API key provided. Please go back and enter your Gemini API key.');
+      setError('No API key provided. Please go back and enter your API key.');
       setIsLoading(false);
       return;
     }
@@ -36,13 +39,17 @@ export function LessonGenerator() {
       student: student?.name,
       subject: selectedSubject?.name,
       topic: selectedTopic?.name,
-      apiKey: apiKey ? 'API Key present' : 'No API Key'
+      apiKey: apiKey ? 'API Key present' : 'No API Key',
+      providers: selectedProviders
     });
 
     setIsLoading(true);
     setError(null);
+    
+    // Use the first selected provider
+    const provider = selectedProviders.length > 0 ? selectedProviders[0] : 'gemini';
 
-    generateLesson(apiKey, student, selectedSubject, selectedTopic)
+    generateLesson(apiKey, student, selectedSubject, selectedTopic, provider)
       .then((response) => {
         console.log('Lesson generation response:', response);
         
@@ -80,7 +87,7 @@ export function LessonGenerator() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [student, selectedSubject, selectedTopic, apiKey, addAchievement]);
+  }, [student, selectedSubject, selectedTopic, apiKey, addAchievement, selectedProviders]);
 
   const handleQuizStart = () => {
     setStep('quiz');
@@ -98,7 +105,9 @@ export function LessonGenerator() {
     
     // Re-attempt to generate the lesson
     if (student && selectedSubject && selectedTopic && apiKey) {
-      generateLesson(apiKey, student, selectedSubject, selectedTopic)
+      const provider = selectedProviders.length > 0 ? selectedProviders[0] : 'gemini';
+      
+      generateLesson(apiKey, student, selectedSubject, selectedTopic, provider)
         .then((response) => {
           if (response.error) {
             setError(response.error);
@@ -202,6 +211,98 @@ export function LessonGenerator() {
     );
   }
 
+  const renderWorksheets = (worksheets: LessonWorksheet[] | undefined) => {
+    if (!worksheets || worksheets.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No worksheets available for this lesson.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8">
+        {worksheets.map((worksheet, index) => (
+          <div key={index} className="border rounded-lg p-6 bg-card/50">
+            <h3 className="text-xl font-semibold mb-2">{worksheet.title}</h3>
+            <p className="text-muted-foreground mb-4">{worksheet.description}</p>
+            
+            <div className="space-y-4">
+              {worksheet.problems.map((problem, problemIndex) => (
+                <div key={problemIndex} className="border p-4 rounded-md bg-background">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 text-primary font-semibold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                      {problemIndex + 1}
+                    </div>
+                    <div className="flex-grow">
+                      <p className="font-medium">{problem.question}</p>
+                      
+                      {problem.difficulty && (
+                        <div className="mt-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            problem.difficulty === 'easy' 
+                              ? 'bg-green-100 text-green-700' 
+                              : problem.difficulty === 'medium'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {problem.answer && (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-primary font-medium">View Answer</summary>
+                          <div className="mt-2 pl-3 border-l-2 border-primary/20">
+                            {problem.answer}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderImages = (images: LessonImage[] | undefined) => {
+    if (!images || images.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No images available for this lesson.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {images.map((image, index) => (
+          <div key={index} className="border rounded-lg overflow-hidden bg-card/50">
+            {image.url ? (
+              <img 
+                src={image.url} 
+                alt={image.alt} 
+                className="w-full h-48 object-cover"
+              />
+            ) : (
+              <div className="w-full h-48 bg-secondary/20 flex items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-muted-foreground" />
+              </div>
+            )}
+            <div className="p-4">
+              <p className="text-sm">{image.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="container max-w-5xl mx-auto px-4 py-6 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -269,6 +370,28 @@ export function LessonGenerator() {
                   Summary
                 </Button>
                 
+                {lesson.worksheets && lesson.worksheets.length > 0 && (
+                  <Button 
+                    variant={activeTab === 'worksheets' ? 'default' : 'ghost'} 
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('worksheets')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Worksheets
+                  </Button>
+                )}
+                
+                {lesson.images && lesson.images.length > 0 && (
+                  <Button 
+                    variant={activeTab === 'images' ? 'default' : 'ghost'} 
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('images')}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Images
+                  </Button>
+                )}
+                
                 <Button 
                   variant={activeTab === 'related' ? 'default' : 'ghost'} 
                   className="w-full justify-start"
@@ -303,6 +426,16 @@ export function LessonGenerator() {
                     <div className="prose max-w-none">
                       {renderContent(lesson.introduction)}
                     </div>
+                    
+                    {lesson.images && lesson.images.length > 0 && lesson.images[0].url && (
+                      <div className="my-6">
+                        <img 
+                          src={lesson.images[0].url} 
+                          alt={lesson.images[0].alt} 
+                          className="rounded-md max-h-96 mx-auto"
+                        />
+                      </div>
+                    )}
                   </TabsContent>
                   
                   {lesson.sections.map((section, index) => (
@@ -391,6 +524,22 @@ export function LessonGenerator() {
                       </Button>
                     </div>
                   </TabsContent>
+                  
+                  {lesson.worksheets && (
+                    <TabsContent value="worksheets" className="animate-fade-in space-y-4">
+                      <h2 className="text-2xl font-semibold mb-4">Worksheets</h2>
+                      <p className="mb-4">Practice what you've learned with these worksheets:</p>
+                      {renderWorksheets(lesson.worksheets)}
+                    </TabsContent>
+                  )}
+                  
+                  {lesson.images && (
+                    <TabsContent value="images" className="animate-fade-in space-y-4">
+                      <h2 className="text-2xl font-semibold mb-4">Educational Images</h2>
+                      <p className="mb-4">Visual aids to help understand {selectedTopic?.name}:</p>
+                      {renderImages(lesson.images)}
+                    </TabsContent>
+                  )}
                   
                   <TabsContent value="related" className="animate-fade-in space-y-4">
                     <h2 className="text-2xl font-semibold mb-4">Related Topics</h2>

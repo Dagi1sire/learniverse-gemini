@@ -1,65 +1,158 @@
 
-import { Student, Subject, Topic, GeminiAPIResponse, LessonContent, QuizQuestion } from '@/types';
+import { Student, Subject, Topic, GeminiAPIResponse, LessonContent, QuizQuestion, ApiProvider } from '@/types';
+
+const generatePrompt = (student: Student, subject: Subject, topic: Topic) => {
+  return `Create a comprehensive educational lesson for a ${student.age} year old student in grade ${student.grade} 
+  about ${topic.name} in ${subject.name}. 
+  The student is interested in ${student.interests.join(', ')}.
+  
+  Please create a detailed lesson that feels like an actual school teaching experience.
+  Include:
+  1. A captivating title and introduction that relates to the student's interests
+  2. 4-6 detailed sections with clear explanations
+  3. Several practical examples for each concept
+  4. Step-by-step explanations of key concepts
+  5. At least one activity or exercise for each section
+  6. A detailed summary section
+  7. Related topics for further learning
+  8. 1-2 printable worksheets with problems and solutions
+  9. Suggestions for relevant educational images that would enhance learning
+  
+  Format the response in the following JSON structure:
+  {
+    "title": "Engaging Lesson Title",
+    "introduction": "Detailed and engaging introduction text that connects to student interests...",
+    "sections": [
+      {
+        "title": "Section Title",
+        "content": "Detailed content with step-by-step explanations...",
+        "example": "Practical, real-world example illustrating the concept...",
+        "activity": {
+          "type": "question|exercise|experiment",
+          "description": "Detailed activity description with clear instructions...",
+          "solution": "Step-by-step solution explanation..."
+        }
+      }
+    ],
+    "summary": "Comprehensive lesson summary with key takeaways...",
+    "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"],
+    "worksheets": [
+      {
+        "title": "Worksheet Title",
+        "description": "Description of what this worksheet practices",
+        "problems": [
+          {
+            "question": "Problem statement or question",
+            "answer": "Answer or solution",
+            "difficulty": "easy|medium|hard"
+          }
+        ]
+      }
+    ],
+    "images": [
+      {
+        "description": "Description of an educational image that would be helpful",
+        "alt": "Alternative text for the image"
+      }
+    ]
+  }`;
+};
+
+const generateQuizPrompt = (student: Student, subject: Subject, topic: Topic, numberOfQuestions: number = 5) => {
+  return `Create a comprehensive quiz with ${numberOfQuestions} questions about ${topic.name} in ${subject.name} for a ${student.age} year old student in grade ${student.grade}.
+  Include multiple-choice, true-false, and short-answer questions that test understanding at different levels of difficulty.
+  Make the questions detailed and educational, testing both factual knowledge and deeper understanding.
+  
+  Format the response as a JSON array with this structure:
+  [
+    {
+      "id": "1",
+      "question": "Detailed question text that tests understanding...",
+      "options": ["Option A with detailed explanation", "Option B with detailed explanation", "Option C with detailed explanation", "Option D with detailed explanation"],
+      "correctAnswer": 0,
+      "explanation": "Comprehensive explanation of why this answer is correct and why others are incorrect...",
+      "type": "multiple-choice"
+    },
+    {
+      "id": "2",
+      "question": "True/False question that tests an important concept...",
+      "options": ["True", "False"],
+      "correctAnswer": "True",
+      "explanation": "Detailed explanation of why this statement is true or false...",
+      "type": "true-false"
+    },
+    {
+      "id": "3",
+      "question": "Short answer question requiring deeper understanding...",
+      "correctAnswer": "Expected answer or answers with variations",
+      "explanation": "Comprehensive explanation of the correct answer...",
+      "type": "short-answer"
+    }
+  ]`;
+};
 
 // Function to generate a personalized lesson
 export async function generateLesson(
   apiKey: string,
   student: Student,
   subject: Subject,
-  topic: Topic
+  topic: Topic,
+  provider: ApiProvider = 'gemini'
 ): Promise<GeminiAPIResponse> {
   try {
     console.log('Generating lesson with:', { 
       apiKey: apiKey ? 'API Key provided' : 'No API Key', 
       student, 
       subject, 
-      topic 
+      topic,
+      provider
     });
 
     if (!apiKey) {
       throw new Error('API key is required');
     }
 
-    // Updated to use gemini-1.5-pro model instead of gemini-pro
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Create an educational lesson for a ${student.age} year old student in grade ${student.grade} 
-                about ${topic.name} in ${subject.name}. 
-                The student is interested in ${student.interests.join(', ')}.
-                Please include a title, introduction, 3-5 sections with examples, a summary, and related topics.
-                Format the response in the following JSON structure:
+    const prompt = generatePrompt(student, subject, topic);
+    let response;
+
+    if (provider === 'gemini') {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
                 {
-                  "title": "Lesson Title",
-                  "introduction": "Engaging introduction text...",
-                  "sections": [
-                    {
-                      "title": "Section Title",
-                      "content": "Main content text...",
-                      "example": "Example illustrating the concept...",
-                      "activity": {
-                        "type": "question|exercise|experiment",
-                        "description": "Activity description...",
-                        "solution": "Optional solution..."
-                      }
-                    }
-                  ],
-                  "summary": "Lesson summary text...",
-                  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"]
-                }`
-              }
-            ]
-          }
-        ]
-      }),
-    });
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        }),
+      });
+    } else if (provider === 'deepseek') {
+      response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'You are an educational AI that creates detailed, grade-appropriate lessons.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 4000
+        }),
+      });
+    } else {
+      throw new Error('Unsupported provider');
+    }
     
     if (!response.ok) {
       console.error('API response not OK:', response.status, response.statusText);
@@ -69,19 +162,24 @@ export async function generateLesson(
     }
     
     const data = await response.json();
-    console.log('Gemini API Response:', data);
+    console.log('API Response:', data);
     
     if (data.error) {
       console.error('API returned error:', data.error);
       throw new Error(data.error.message || 'Error generating lesson');
     }
     
-    // Extract the text from the response
-    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Extract the text from the response based on provider
+    let textContent;
+    if (provider === 'gemini') {
+      textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else if (provider === 'deepseek') {
+      textContent = data.choices?.[0]?.message?.content;
+    }
     
     if (!textContent) {
       console.error('No text content in response:', data);
-      throw new Error('Invalid response format from Gemini API');
+      throw new Error('Invalid response format from API');
     }
     
     try {
@@ -96,6 +194,28 @@ export async function generateLesson(
       
       // Parse the JSON content
       const lessonContent = JSON.parse(jsonContent) as LessonContent;
+      
+      // If we have image suggestions but no URLs, try to find appropriate images
+      if (lessonContent.images && lessonContent.images.length > 0) {
+        lessonContent.images = lessonContent.images.map(image => {
+          // Add placeholder image URLs based on the subject
+          if (!image.url) {
+            if (subject.id === 'math') {
+              image.url = 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1000';
+            } else if (subject.id === 'science') {
+              image.url = 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=1000';
+            } else if (subject.id === 'history') {
+              image.url = 'https://images.unsplash.com/photo-1461360228754-6e81c478b882?q=80&w=1000';
+            } else if (subject.id === 'english') {
+              image.url = 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=1000';
+            } else {
+              image.url = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1000';
+            }
+          }
+          return image;
+        });
+      }
+      
       console.log('Successfully parsed lesson content:', lessonContent);
       return { content: lessonContent };
     } catch (parseError) {
@@ -137,7 +257,36 @@ export async function generateLesson(
           }
         ],
         summary: `Great job exploring ${topic.name} today! We've covered the basics, key principles, and real-world applications. Remember that ${topic.name} connects to many of your interests like ${student.interests.join(', ')}.`,
-        relatedTopics: ['Advanced concepts', 'Historical development', 'Future trends']
+        relatedTopics: ['Advanced concepts', 'Historical development', 'Future trends'],
+        worksheets: [
+          {
+            title: `${topic.name} Practice Worksheet`,
+            description: `A worksheet to help you practice what you've learned about ${topic.name}`,
+            problems: [
+              {
+                question: `Explain the most important concept related to ${topic.name} in your own words.`,
+                difficulty: 'medium'
+              },
+              {
+                question: `How does ${topic.name} relate to ${student.interests[0]}?`,
+                difficulty: 'easy'
+              },
+              {
+                question: `What would happen if we applied ${topic.name} to solve a real-world problem?`,
+                difficulty: 'hard'
+              }
+            ]
+          }
+        ],
+        images: [
+          {
+            description: `Diagram illustrating the key concepts of ${topic.name}`,
+            url: subject.id === 'math' 
+              ? 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1000' 
+              : 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=1000',
+            alt: `Visual representation of ${topic.name}`
+          }
+        ]
       };
       
       console.log('Using fallback lesson content:', fallbackLesson);
@@ -158,65 +307,63 @@ export async function generateQuiz(
   student: Student,
   subject: Subject,
   topic: Topic,
-  numberOfQuestions: number = 5
+  numberOfQuestions: number = 5,
+  provider: ApiProvider = 'gemini'
 ): Promise<GeminiAPIResponse> {
   try {
     console.log('Generating quiz with:', { 
       apiKey: apiKey ? 'API Key provided' : 'No API Key', 
       student, 
       subject, 
-      topic 
+      topic,
+      provider
     });
 
     if (!apiKey) {
       throw new Error('API key is required');
     }
 
-    // Updated to use gemini-1.5-pro model instead of gemini-pro
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Create a quiz with ${numberOfQuestions} questions about ${topic.name} in ${subject.name} for a ${student.age} year old student in grade ${student.grade}.
-                Include multiple-choice, true-false, and short-answer questions.
-                Format the response as a JSON array with this structure:
-                [
-                  {
-                    "id": "1",
-                    "question": "Question text",
-                    "options": ["Option A", "Option B", "Option C", "Option D"],
-                    "correctAnswer": 0,
-                    "explanation": "Explanation of the correct answer",
-                    "type": "multiple-choice"
-                  },
-                  {
-                    "id": "2",
-                    "question": "True/False question text",
-                    "options": ["True", "False"],
-                    "correctAnswer": "True",
-                    "explanation": "Explanation of why this is true or false",
-                    "type": "true-false"
-                  },
-                  {
-                    "id": "3",
-                    "question": "Short answer question text",
-                    "correctAnswer": "Expected answer or answers",
-                    "explanation": "Explanation of the correct answer",
-                    "type": "short-answer"
-                  }
-                ]`
-              }
-            ]
-          }
-        ]
-      }),
-    });
+    const prompt = generateQuizPrompt(student, subject, topic, numberOfQuestions);
+    let response;
+
+    if (provider === 'gemini') {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        }),
+      });
+    } else if (provider === 'deepseek') {
+      response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'You are an educational AI that creates detailed quizzes.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 3000
+        }),
+      });
+    } else {
+      throw new Error('Unsupported provider');
+    }
     
     if (!response.ok) {
       console.error('API response not OK:', response.status, response.statusText);
@@ -226,19 +373,24 @@ export async function generateQuiz(
     }
     
     const data = await response.json();
-    console.log('Gemini API Response for quiz:', data);
+    console.log('API Response for quiz:', data);
     
     if (data.error) {
       console.error('API returned error:', data.error);
       throw new Error(data.error.message || 'Error generating quiz');
     }
     
-    // Extract the text from the response
-    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Extract the text from the response based on provider
+    let textContent;
+    if (provider === 'gemini') {
+      textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else if (provider === 'deepseek') {
+      textContent = data.choices?.[0]?.message?.content;
+    }
     
     if (!textContent) {
       console.error('No text content in quiz response:', data);
-      throw new Error('Invalid response format from Gemini API');
+      throw new Error('Invalid response format from API');
     }
     
     try {
@@ -330,17 +482,31 @@ export async function generateQuiz(
 }
 
 // Function to validate the API key
-export async function validateApiKey(apiKey: string): Promise<boolean> {
+export async function validateApiKey(apiKey: string, provider: ApiProvider = 'gemini'): Promise<boolean> {
   try {
-    console.log('Validating API key');
+    console.log(`Validating ${provider} API key`);
 
     if (!apiKey) {
       console.error('No API key provided');
       return false;
     }
 
-    // Make a simple request to the Gemini API to check if the key is valid
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    let response;
+
+    if (provider === 'gemini') {
+      // Make a simple request to the Gemini API to check if the key is valid
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    } else if (provider === 'deepseek') {
+      // Make a simple request to the DeepSeek API to check if the key is valid
+      response = await fetch('https://api.deepseek.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      });
+    } else {
+      console.error('Unsupported provider');
+      return false;
+    }
     
     if (!response.ok) {
       console.error('API key validation failed:', response.status, response.statusText);

@@ -30,12 +30,16 @@ export interface Achievement {
   earned: boolean;
 }
 
+export type ApiProvider = 'gemini' | 'deepseek';
+
 export interface LessonContent {
   title: string;
   introduction: string;
   sections: LessonSection[];
   summary: string;
   relatedTopics: string[];
+  worksheets?: LessonWorksheet[];
+  images?: LessonImage[];
 }
 
 export interface LessonSection {
@@ -49,6 +53,24 @@ export interface LessonActivity {
   type: 'question' | 'exercise' | 'experiment';
   description: string;
   solution?: string;
+}
+
+export interface LessonWorksheet {
+  title: string;
+  description: string;
+  problems: LessonWorksheetProblem[];
+}
+
+export interface LessonWorksheetProblem {
+  question: string;
+  answer?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
+export interface LessonImage {
+  description: string;
+  url?: string;
+  alt: string;
 }
 
 export interface QuizQuestion {

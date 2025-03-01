@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Student, Subject, Topic, Achievement } from '@/types';
+import { Student, Subject, Topic, Achievement, ApiProvider } from '@/types';
 import { toast } from 'sonner';
 
 interface StudentContextType {
@@ -12,6 +12,8 @@ interface StudentContextType {
   setSelectedTopic: (topic: Topic | null) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  selectedProviders: ApiProvider[];
+  setSelectedProviders: (providers: ApiProvider[]) => void;
   achievements: Achievement[];
   addAchievement: (achievement: Achievement) => void;
   resetOnboarding: () => void;
@@ -26,6 +28,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
+  const [selectedProviders, setSelectedProviders] = useState<ApiProvider[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [step, setStep] = useState<'onboarding' | 'subject' | 'topic' | 'apiKey' | 'lesson' | 'quiz'>('onboarding');
 
@@ -64,6 +67,8 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
         setSelectedTopic,
         apiKey,
         setApiKey,
+        selectedProviders,
+        setSelectedProviders,
         achievements,
         addAchievement,
         resetOnboarding,
