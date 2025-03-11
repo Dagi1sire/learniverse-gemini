@@ -1,18 +1,19 @@
 
 import { useEffect, useState } from 'react';
 import { useStudent } from '@/context/StudentContext';
-import { LessonContent, LessonImage, LessonWorksheet } from '@/types';
+import { LessonContent, LessonImage, LessonWorksheet, LessonSection } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, 
-  Brain, AlertCircle, FileText, Image as ImageIcon
+  Brain, AlertCircle, FileText, Image as ImageIcon, CheckCircle
 } from 'lucide-react';
 import { AnimatedCharacter } from './AnimatedCharacter';
 import { generateLesson } from '@/utils/geminiAPI';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 
 export function LessonGenerator() {
   const { student, selectedSubject, selectedTopic, apiKey, setStep, addAchievement, selectedProviders } = useStudent();
@@ -21,6 +22,8 @@ export function LessonGenerator() {
   const [activeTab, setActiveTab] = useState('intro');
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [completedSections, setCompletedSections] = useState<string[]>([]);
 
   useEffect(() => {
     if (!student || !selectedSubject || !selectedTopic) {
@@ -93,6 +96,33 @@ export function LessonGenerator() {
     setStep('quiz');
   };
 
+  const markSectionComplete = (sectionId: string) => {
+    if (!completedSections.includes(sectionId)) {
+      const newCompletedSections = [...completedSections, sectionId];
+      setCompletedSections(newCompletedSections);
+      
+      // Calculate progress percentage
+      if (lesson) {
+        // +2 for intro and summary
+        const totalSections = lesson.sections.length + 2;
+        const newProgress = Math.round((newCompletedSections.length / totalSections) * 100);
+        setProgress(newProgress);
+        
+        // Award achievement if completed all sections
+        if (newCompletedSections.length === totalSections) {
+          addAchievement({
+            id: 'completed-lesson',
+            title: 'Knowledge Master',
+            description: `Completed the entire ${lesson.title} lesson!`,
+            icon: '🏆',
+            earned: true
+          });
+          toast.success("Congratulations! You've completed the entire lesson!");
+        }
+      }
+    }
+  };
+
   const renderContent = (content: string) => {
     return content.split('\n').map((paragraph, index) => (
       <p key={index} className="mb-4">{paragraph}</p>
@@ -131,6 +161,65 @@ export function LessonGenerator() {
     }
   };
 
+  // Interactive activity component
+  const InteractiveActivity = ({ section }: { section: LessonSection }) => {
+    const [showSolution, setShowSolution] = useState(false);
+    const [userAnswer, setUserAnswer] = useState('');
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+    
+    if (!section.activity) return null;
+    
+    const checkAnswer = () => {
+      setShowSolution(true);
+      
+      // Simple check - just see if the user attempted an answer
+      if (userAnswer.trim().length > 0) {
+        setIsCorrect(true);
+        toast.success("Great effort! Check the solution to see how you did.");
+      } else {
+        setIsCorrect(false);
+        toast.error("Please try answering before checking the solution.");
+      }
+    };
+    
+    return (
+      <div className="bg-accent/20 p-6 rounded-lg my-4 border border-accent animate-fade-in">
+        <h3 className="font-medium text-lg mb-3">Try It Yourself:</h3>
+        <p className="mb-4">{section.activity.description}</p>
+        
+        <div className="mb-4">
+          <textarea
+            className="w-full p-3 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
+            rows={3}
+            placeholder="Enter your answer here..."
+            value={userAnswer}
+            onChange={(e) => setUserAnswer(e.target.value)}
+            disabled={showSolution}
+          />
+        </div>
+        
+        {!showSolution ? (
+          <Button onClick={checkAnswer}>Check Answer</Button>
+        ) : (
+          <div className="mt-4 bg-background p-4 rounded-md border">
+            <h4 className="font-medium mb-2">Solution:</h4>
+            <div className="pl-4 border-l-2 border-primary/30">
+              {section.activity.solution}
+            </div>
+          </div>
+        )}
+        
+        {isCorrect !== null && (
+          <div className={`mt-4 p-3 rounded-md ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            {isCorrect 
+              ? "Great job attempting this problem! Compare your answer with the solution."
+              : "Please try answering the question before viewing the solution."}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
@@ -140,9 +229,9 @@ export function LessonGenerator() {
               <AnimatedCharacter expression="thinking" />
             </div>
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2">Generating Your Lesson</h2>
+              <h2 className="text-3xl font-bold mb-2">Generating Your Khan Academy-Style Lesson</h2>
               <p className="text-muted-foreground">
-                Creating a personalized lesson just for you...
+                Creating a personalized interactive lesson just for you...
               </p>
             </div>
             <div className="space-y-6 max-w-2xl mx-auto">
@@ -326,6 +415,15 @@ export function LessonGenerator() {
         </div>
       </div>
       
+      {/* Progress tracking bar */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Your progress</span>
+          <span className="text-sm font-medium">{progress}% complete</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-1">
           <Card className="sticky top-6 shadow-md">
@@ -340,10 +438,18 @@ export function LessonGenerator() {
                 <Button 
                   variant={activeTab === 'intro' ? 'default' : 'ghost'} 
                   className="w-full justify-start"
-                  onClick={() => setActiveTab('intro')}
+                  onClick={() => {
+                    setActiveTab('intro');
+                    markSectionComplete('intro');
+                  }}
                 >
-                  <Book className="h-4 w-4 mr-2" />
-                  Introduction
+                  <div className="flex items-center w-full">
+                    <Book className="h-4 w-4 mr-2" />
+                    <span className="flex-grow text-left">Introduction</span>
+                    {completedSections.includes('intro') && (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
                 </Button>
                 
                 {lesson.sections.map((section, index) => (
@@ -354,20 +460,34 @@ export function LessonGenerator() {
                     onClick={() => {
                       setActiveTab(`section-${index}`);
                       setCurrentSectionIndex(index);
+                      markSectionComplete(`section-${index}`);
                     }}
                   >
-                    <List className="h-4 w-4 mr-2" />
-                    {section.title}
+                    <div className="flex items-center w-full">
+                      <List className="h-4 w-4 mr-2" />
+                      <span className="flex-grow text-left truncate">{section.title}</span>
+                      {completedSections.includes(`section-${index}`) && (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
                   </Button>
                 ))}
                 
                 <Button 
                   variant={activeTab === 'summary' ? 'default' : 'ghost'} 
                   className="w-full justify-start"
-                  onClick={() => setActiveTab('summary')}
+                  onClick={() => {
+                    setActiveTab('summary');
+                    markSectionComplete('summary');
+                  }}
                 >
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Summary
+                  <div className="flex items-center w-full">
+                    <GraduationCap className="h-4 w-4 mr-2" />
+                    <span className="flex-grow text-left">Summary</span>
+                    {completedSections.includes('summary') && (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
                 </Button>
                 
                 {lesson.worksheets && lesson.worksheets.length > 0 && (
@@ -418,7 +538,7 @@ export function LessonGenerator() {
               <div className="mb-5">
                 <h1 className="text-3xl font-bold mb-2 text-primary">{lesson.title}</h1>
                 <p className="text-muted-foreground mb-6">
-                  A personalized lesson for {student?.name}, Grade {student?.grade}
+                  A personalized Khan Academy-style lesson for {student?.name}, Grade {student?.grade}
                 </p>
                 
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -436,50 +556,58 @@ export function LessonGenerator() {
                         />
                       </div>
                     )}
+                    
+                    <div className="mt-6 flex justify-end">
+                      <Button 
+                        onClick={() => {
+                          setActiveTab(`section-0`);
+                          setCurrentSectionIndex(0);
+                          markSectionComplete(`section-0`);
+                        }}
+                      >
+                        Start Learning
+                        <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                      </Button>
+                    </div>
                   </TabsContent>
                   
                   {lesson.sections.map((section, index) => (
                     <TabsContent key={index} value={`section-${index}`} className="animate-fade-in space-y-4">
                       <h2 className="text-2xl font-semibold mb-4">{section.title}</h2>
+                      
                       <div className="prose max-w-none">
                         {renderContent(section.content)}
                       </div>
                       
                       {section.example && (
-                        <div className="bg-secondary/50 p-4 rounded-lg my-4 border-l-4 border-primary">
-                          <h3 className="font-medium mb-2">Example:</h3>
-                          <p>{section.example}</p>
+                        <div className="bg-secondary/50 p-4 rounded-lg my-6 border-l-4 border-primary">
+                          <h3 className="font-medium mb-2 text-lg">Example:</h3>
+                          <div className="space-y-2">
+                            {section.example.split('\n').map((paragraph, i) => (
+                              <p key={i}>{paragraph}</p>
+                            ))}
+                          </div>
                         </div>
                       )}
                       
+                      {/* Interactive activity component */}
                       {section.activity && (
-                        <div className="bg-accent/20 p-4 rounded-lg my-4 border border-accent">
-                          <h3 className="font-medium mb-2">Activity:</h3>
-                          <p>{section.activity.description}</p>
-                          
-                          {section.activity.solution && (
-                            <details className="mt-3">
-                              <summary className="cursor-pointer font-medium text-primary">View Solution</summary>
-                              <p className="mt-2 pl-4 border-l-2 border-primary/30">
-                                {section.activity.solution}
-                              </p>
-                            </details>
-                          )}
-                        </div>
+                        <InteractiveActivity section={section} />
                       )}
                       
-                      <div className="flex justify-between mt-6 pt-4">
+                      <div className="flex justify-between mt-8 pt-4 border-t">
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           onClick={() => {
                             if (index === 0) {
                               setActiveTab('intro');
+                              markSectionComplete('intro');
                             } else {
                               setActiveTab(`section-${index - 1}`);
                               setCurrentSectionIndex(index - 1);
+                              markSectionComplete(`section-${index - 1}`);
                             }
                           }}
-                          disabled={index === 0}
                         >
                           <ArrowLeft className="h-4 w-4 mr-2" />
                           Previous
@@ -489,11 +617,14 @@ export function LessonGenerator() {
                           onClick={() => {
                             if (index === lesson.sections.length - 1) {
                               setActiveTab('summary');
+                              markSectionComplete('summary');
                             } else {
                               setActiveTab(`section-${index + 1}`);
                               setCurrentSectionIndex(index + 1);
+                              markSectionComplete(`section-${index + 1}`);
                             }
                           }}
+                          className="bg-primary hover:bg-primary/90"
                         >
                           Next
                           <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
@@ -508,16 +639,18 @@ export function LessonGenerator() {
                       {renderContent(lesson.summary)}
                     </div>
                     
-                    <div className="bg-primary/10 p-4 rounded-lg my-6 border border-primary/20">
-                      <h3 className="font-medium mb-2">What you've learned:</h3>
-                      <ul className="space-y-2 pl-5 list-disc">
+                    <div className="bg-primary/10 p-6 rounded-lg my-6 border border-primary/20">
+                      <h3 className="font-medium text-lg mb-4">What you've learned:</h3>
+                      <ul className="space-y-3 pl-5 list-disc">
                         {lesson.sections.map((section, index) => (
-                          <li key={index}>{section.title}</li>
+                          <li key={index} className="text-primary-foreground">
+                            <span className="font-medium">{section.title}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                     
-                    <div className="flex justify-center mt-6">
+                    <div className="flex justify-center mt-8">
                       <Button onClick={handleQuizStart} size="lg" className="button-hover">
                         <Award className="h-5 w-5 mr-2" />
                         Take the Quiz to Test Your Knowledge

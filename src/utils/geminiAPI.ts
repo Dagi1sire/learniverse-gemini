@@ -1,4 +1,3 @@
-
 import { Student, Subject, Topic, GeminiAPIResponse, LessonContent, QuizQuestion, ApiProvider } from '@/types';
 
 const generatePrompt = (student: Student, subject: Subject, topic: Topic) => {
@@ -6,44 +5,49 @@ const generatePrompt = (student: Student, subject: Subject, topic: Topic) => {
   about ${topic.name} in ${subject.name}. 
   The student is interested in ${student.interests.join(', ')}.
   
-  Please create a detailed lesson that feels like an actual school teaching experience.
-  Include:
-  1. A captivating title and introduction that relates to the student's interests
-  2. 4-6 detailed sections with clear explanations
-  3. Several practical examples for each concept
-  4. Step-by-step explanations of key concepts
-  5. At least one activity or exercise for each section
-  6. A detailed summary section
-  7. Related topics for further learning
-  8. 1-2 printable worksheets with problems and solutions
-  9. Suggestions for relevant educational images that would enhance learning
+  IMPORTANT: Make this lesson exactly like a Khan Academy lesson. Focus on clear explanations with visual examples and step-by-step learning.
+  
+  Please create a detailed lesson with:
+  1. A captivating title that clearly states the learning objective
+  2. A brief introduction explaining why this topic matters and how it connects to real life
+  3. 4-6 detailed sections that break down concepts progressively from simple to complex
+  4. Each section should have:
+     - Clear explanations using simple language appropriate for grade ${student.grade}
+     - Step-by-step worked examples (like Khan Academy's step-by-step approach)
+     - Visual representations described clearly
+     - Common misconceptions and how to avoid them
+  5. Interactive practice problems after each section with detailed solutions
+  6. Real-world applications that connect to the student's interests: ${student.interests.join(', ')}
+  7. A concise summary that reinforces key points
+  8. 1-2 printable worksheets with varied difficulty levels (make these very educational)
+  9. Specific suggestions for educational images that would enhance learning (with detailed descriptions)
   
   Format the response in the following JSON structure:
   {
-    "title": "Engaging Lesson Title",
-    "introduction": "Detailed and engaging introduction text that connects to student interests...",
+    "title": "Clear, specific title focusing on the learning objective",
+    "introduction": "Engaging introduction that explains why this topic matters and connects to student interests...",
     "sections": [
       {
-        "title": "Section Title",
-        "content": "Detailed content with step-by-step explanations...",
-        "example": "Practical, real-world example illustrating the concept...",
+        "title": "Clear concept-focused section title",
+        "content": "Clear, conversational explanation using simple language with step-by-step breakdowns...",
+        "example": "Detailed worked example showing the process step-by-step, exactly as Khan Academy would present it...",
         "activity": {
           "type": "question|exercise|experiment",
-          "description": "Detailed activity description with clear instructions...",
-          "solution": "Step-by-step solution explanation..."
+          "description": "Interactive practice problem with clear instructions...",
+          "solution": "Step-by-step solution showing each calculation or reasoning step..."
         }
       }
     ],
-    "summary": "Comprehensive lesson summary with key takeaways...",
-    "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"],
+    "summary": "Concise summary reinforcing key points learned...",
+    "relatedTopics": ["Related Topic 1", "Related Topic 2", "Related Topic 3"],
     "worksheets": [
       {
-        "title": "Worksheet Title",
-        "description": "Description of what this worksheet practices",
+        "title": "Practice Worksheet: [Specific Concept]",
+        "description": "Clear description of skills being practiced",
         "problems": [
           {
-            "question": "Problem statement or question",
-            "answer": "Answer or solution",
+            "question": "Clear, specific problem statement",
+            "answer": "Complete step-by-step solution",
             "difficulty": "easy|medium|hard"
           }
         ]
@@ -51,41 +55,49 @@ const generatePrompt = (student: Student, subject: Subject, topic: Topic) => {
     ],
     "images": [
       {
-        "description": "Description of an educational image that would be helpful",
-        "alt": "Alternative text for the image"
+        "description": "Detailed description of an educational image that would be helpful for this specific concept",
+        "alt": "Alternative text describing the image content"
       }
     ]
   }`;
 };
 
 const generateQuizPrompt = (student: Student, subject: Subject, topic: Topic, numberOfQuestions: number = 5) => {
-  return `Create a comprehensive quiz with ${numberOfQuestions} questions about ${topic.name} in ${subject.name} for a ${student.age} year old student in grade ${student.grade}.
-  Include multiple-choice, true-false, and short-answer questions that test understanding at different levels of difficulty.
-  Make the questions detailed and educational, testing both factual knowledge and deeper understanding.
+  return `Create a comprehensive Khan Academy-style quiz with ${numberOfQuestions} questions about ${topic.name} in ${subject.name} for a ${student.age} year old student in grade ${student.grade}.
+  
+  IMPORTANT: This quiz should exactly match Khan Academy's style of progressive assessment with clear feedback.
+  
+  Include:
+  - Multiple-choice questions with plausible distractors (wrong answers should represent common misconceptions)
+  - True-false questions that check conceptual understanding
+  - Short-answer questions that test deeper application
+  - Questions that progressively increase in difficulty
+  - Questions that test both basic recall and deeper understanding/application
+  - Detailed explanations for EACH answer choice (why correct answers are correct and why incorrect answers are incorrect)
   
   Format the response as a JSON array with this structure:
   [
     {
       "id": "1",
-      "question": "Detailed question text that tests understanding...",
-      "options": ["Option A with detailed explanation", "Option B with detailed explanation", "Option C with detailed explanation", "Option D with detailed explanation"],
-      "correctAnswer": 0,
-      "explanation": "Comprehensive explanation of why this answer is correct and why others are incorrect...",
+      "question": "Clear, focused question testing a specific concept...",
+      "options": ["Option A (common misconception)", "Option B (correct answer)", "Option C (common mistake)", "Option D (plausible alternative)"],
+      "correctAnswer": 1,
+      "explanation": "Detailed explanation of why option B is correct AND why each other option is incorrect...",
       "type": "multiple-choice"
     },
     {
       "id": "2",
-      "question": "True/False question that tests an important concept...",
+      "question": "True/False question requiring conceptual understanding...",
       "options": ["True", "False"],
       "correctAnswer": "True",
-      "explanation": "Detailed explanation of why this statement is true or false...",
+      "explanation": "Detailed explanation of the concept, referencing specific parts of the lesson...",
       "type": "true-false"
     },
     {
       "id": "3",
-      "question": "Short answer question requiring deeper understanding...",
+      "question": "Short answer question requiring application of knowledge...",
       "correctAnswer": "Expected answer or answers with variations",
-      "explanation": "Comprehensive explanation of the correct answer...",
+      "explanation": "Step-by-step explanation of how to arrive at this answer, including any formulas or thinking processes...",
       "type": "short-answer"
     }
   ]`;
