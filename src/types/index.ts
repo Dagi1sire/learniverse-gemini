@@ -1,4 +1,3 @@
-
 export interface Student {
   name: string;
   age: number;
@@ -40,6 +39,8 @@ export interface LessonContent {
   relatedTopics: string[];
   worksheets?: LessonWorksheet[];
   images?: LessonImage[];
+  interactiveExercises?: InteractiveExercise[];
+  videoReferences?: VideoReference[];
 }
 
 export interface LessonSection {
@@ -50,9 +51,10 @@ export interface LessonSection {
 }
 
 export interface LessonActivity {
-  type: 'question' | 'exercise' | 'experiment';
+  type: 'question' | 'exercise' | 'experiment' | 'interactive';
   description: string;
   solution?: string;
+  hints?: string[];
 }
 
 export interface LessonWorksheet {
@@ -65,12 +67,28 @@ export interface LessonWorksheetProblem {
   question: string;
   answer?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+  explanation?: string;
 }
 
 export interface LessonImage {
   description: string;
   url?: string;
   alt: string;
+}
+
+export interface InteractiveExercise {
+  id: string;
+  type: 'drag-and-drop' | 'fill-in-the-blank' | 'matching' | 'sequence';
+  title: string;
+  description: string;
+  data: any; // Specific data structure based on exercise type
+}
+
+export interface VideoReference {
+  title: string;
+  description: string;
+  url: string;
+  durationMinutes: number;
 }
 
 export interface QuizQuestion {

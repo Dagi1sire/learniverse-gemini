@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useStudent } from '@/context/StudentContext';
 import { Student } from '@/types';
@@ -39,6 +38,16 @@ export function OnboardingForm() {
     }
   };
 
+  const handleAgeChange = (value: number) => {
+    const newAge = Math.min(Math.max(value, 5), 18);
+    setAge(newAge);
+  };
+
+  const handleGradeChange = (value: number) => {
+    const newGrade = Math.min(Math.max(value, 1), 12);
+    setGrade(newGrade);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -66,7 +75,6 @@ export function OnboardingForm() {
       
       setStudent(student);
       
-      // Add first achievement
       addAchievement({
         id: 'profile-created',
         title: 'Profile Created',
@@ -75,7 +83,6 @@ export function OnboardingForm() {
         earned: true
       });
       
-      // Move to subject selection
       setStep('subject');
     }
   };
@@ -112,7 +119,7 @@ export function OnboardingForm() {
                   <Label htmlFor="age">How old are you?</Label>
                   <div className="flex items-center gap-4">
                     <Slider
-                      id="age"
+                      id="age-slider"
                       min={5}
                       max={18}
                       step={1}
@@ -120,7 +127,15 @@ export function OnboardingForm() {
                       onValueChange={(value) => setAge(value[0])}
                       className="flex-1"
                     />
-                    <span className="font-medium text-lg min-w-[2rem] text-center">{age}</span>
+                    <Input
+                      id="age"
+                      type="number"
+                      min={5}
+                      max={18}
+                      value={age}
+                      onChange={(e) => handleAgeChange(parseInt(e.target.value) || 10)}
+                      className="w-16 text-center"
+                    />
                   </div>
                 </div>
                 
@@ -128,7 +143,7 @@ export function OnboardingForm() {
                   <Label htmlFor="grade">What grade are you in?</Label>
                   <div className="flex items-center gap-4">
                     <Slider
-                      id="grade"
+                      id="grade-slider"
                       min={1}
                       max={12}
                       step={1}
@@ -136,7 +151,15 @@ export function OnboardingForm() {
                       onValueChange={(value) => setGrade(value[0])}
                       className="flex-1"
                     />
-                    <span className="font-medium text-lg min-w-[2rem] text-center">{grade}</span>
+                    <Input
+                      id="grade"
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={grade}
+                      onChange={(e) => handleGradeChange(parseInt(e.target.value) || 5)}
+                      className="w-16 text-center"
+                    />
                   </div>
                 </div>
               </div>
