@@ -1,12 +1,15 @@
+
 import * as React from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
+
 interface EnhancedSliderProps extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
   variant?: 'default' | 'primary' | 'secondary';
   thickness?: 'thin' | 'default' | 'thick';
   showMarks?: boolean;
   marks?: number[];
 }
+
 const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, EnhancedSliderProps>(({
   className,
   variant = 'default',
@@ -53,6 +56,7 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, E
         return 'h-2';
     }
   };
+
   const getThumbSizeClasses = () => {
     switch (thickness) {
       case 'thin':
@@ -63,24 +67,44 @@ const Slider = React.forwardRef<React.ElementRef<typeof SliderPrimitive.Root>, E
         return 'h-5 w-5';
     }
   };
-  return <div className="relative">
+
+  return (
+    <div className="relative">
       <SliderPrimitive.Root ref={ref} className={cn("relative flex w-full touch-none select-none items-center", className)} {...props}>
         <SliderPrimitive.Track className={cn("relative w-full grow overflow-hidden rounded-full bg-secondary", getTrackThicknessClasses())}>
           <SliderPrimitive.Range className={cn("absolute h-full", getColorClasses())} />
         </SliderPrimitive.Track>
-        {props.value?.map((_, i) => {})}
+        {props.value?.map((_, index) => (
+          <SliderPrimitive.Thumb 
+            key={index}
+            className={cn(
+              "block rounded-full border-2 border-primary bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+              getThumbSizeClasses()
+            )}
+          />
+        ))}
       </SliderPrimitive.Root>
       
       {/* Optional Marks */}
-      {showMarks && <div className="relative w-full mt-1 flex justify-between px-[10px]">
-          {generatedMarks.map((mark, i) => <div key={i} className="flex flex-col items-center">
-              <div className={cn("w-0.5 h-1 bg-muted-foreground mb-1", mark === props.value?.[0] && "bg-primary h-2")} />
+      {showMarks && (
+        <div className="relative w-full mt-1 flex justify-between px-[10px]">
+          {generatedMarks.map((mark, i) => (
+            <div key={i} className="flex flex-col items-center">
+              <div className={cn(
+                "w-0.5 h-1 bg-muted-foreground mb-1", 
+                mark === props.value?.[0] && "bg-primary h-2"
+              )} />
               <span className="text-[10px] text-muted-foreground">
                 {mark}
               </span>
-            </div>)}
-        </div>}
-    </div>;
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 });
+
 Slider.displayName = SliderPrimitive.Root.displayName;
+
 export { Slider };
