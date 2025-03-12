@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, Brain, AlertCircle, FileText, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Book, FilePlus, Play, List, Award, GraduationCap, Brain, AlertCircle, FileText, Image as ImageIcon, CheckCircle, Printer } from 'lucide-react';
 import { AnimatedCharacter } from './AnimatedCharacter';
 import { generateLesson } from '@/utils/geminiAPI';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+
 export function LessonGenerator() {
   const {
     student,
@@ -27,6 +28,8 @@ export function LessonGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [completedSections, setCompletedSections] = useState<string[]>([]);
+  const [isPrintMode, setIsPrintMode] = useState(false);
+
   useEffect(() => {
     if (!student || !selectedSubject || !selectedTopic) {
       setError('Missing required information. Please go back and complete all steps.');
@@ -48,7 +51,6 @@ export function LessonGenerator() {
     setIsLoading(true);
     setError(null);
 
-    // Use the first selected provider
     const provider = selectedProviders.length > 0 ? selectedProviders[0] : 'gemini';
     generateLesson(apiKey, student, selectedSubject, selectedTopic, provider).then(response => {
       console.log('Lesson generation response:', response);
@@ -65,7 +67,6 @@ export function LessonGenerator() {
       }
       setLesson(response.content as LessonContent);
 
-      // Add achievement
       addAchievement({
         id: 'first-lesson',
         title: 'First Lesson Completed',
@@ -82,22 +83,21 @@ export function LessonGenerator() {
       setIsLoading(false);
     });
   }, [student, selectedSubject, selectedTopic, apiKey, addAchievement, selectedProviders]);
+
   const handleQuizStart = () => {
     setStep('quiz');
   };
+
   const markSectionComplete = (sectionId: string) => {
     if (!completedSections.includes(sectionId)) {
       const newCompletedSections = [...completedSections, sectionId];
       setCompletedSections(newCompletedSections);
 
-      // Calculate progress percentage
       if (lesson) {
-        // +2 for intro and summary
         const totalSections = lesson.sections.length + 2;
         const newProgress = Math.round(newCompletedSections.length / totalSections * 100);
         setProgress(newProgress);
 
-        // Award achievement if completed all sections
         if (newCompletedSections.length === totalSections) {
           addAchievement({
             id: 'completed-lesson',
@@ -111,14 +111,15 @@ export function LessonGenerator() {
       }
     }
   };
+
   const renderContent = (content: string) => {
     return content.split('\n').map((paragraph, index) => <p key={index} className="mb-4">{paragraph}</p>);
   };
+
   const handleRetry = () => {
     setIsLoading(true);
     setError(null);
 
-    // Re-attempt to generate the lesson
     if (student && selectedSubject && selectedTopic && apiKey) {
       const provider = selectedProviders.length > 0 ? selectedProviders[0] : 'gemini';
       generateLesson(apiKey, student, selectedSubject, selectedTopic, provider).then(response => {
@@ -141,7 +142,14 @@ export function LessonGenerator() {
     }
   };
 
-  // Interactive activity component
+  const handlePrint = () => {
+    setIsPrintMode(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrintMode(false);
+    }, 100);
+  };
+
   const InteractiveActivity = ({
     section
   }: {
@@ -154,7 +162,6 @@ export function LessonGenerator() {
     const checkAnswer = () => {
       setShowSolution(true);
 
-      // Simple check - just see if the user attempted an answer
       if (userAnswer.trim().length > 0) {
         setIsCorrect(true);
         toast.success("Great effort! Check the solution to see how you did.");
@@ -183,6 +190,7 @@ export function LessonGenerator() {
           </div>}
       </div>;
   };
+
   if (isLoading) {
     return <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
         <Card className="w-full shadow-lg border-2 border-primary/10">
@@ -210,6 +218,7 @@ export function LessonGenerator() {
         </Card>
       </div>;
   }
+
   if (error) {
     return <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
         <Card className="w-full shadow-lg border-2 border-destructive/10">
@@ -235,6 +244,7 @@ export function LessonGenerator() {
         </Card>
       </div>;
   }
+
   if (!lesson) {
     return <div className="container max-w-4xl mx-auto px-4 py-8 animate-fade-in">
         <Card className="w-full shadow-lg border-2 border-primary/10">
@@ -254,6 +264,7 @@ export function LessonGenerator() {
         </Card>
       </div>;
   }
+
   const renderWorksheets = (worksheets: LessonWorksheet[] | undefined) => {
     if (!worksheets || worksheets.length === 0) {
       return <div className="text-center py-8">
@@ -293,6 +304,7 @@ export function LessonGenerator() {
           </div>)}
       </div>;
   };
+
   const renderImages = (images: LessonImage[] | undefined) => {
     if (!images || images.length === 0) {
       return <div className="text-center py-8">
@@ -310,6 +322,103 @@ export function LessonGenerator() {
           </div>)}
       </div>;
   };
+
+  if (isPrintMode && lesson) {
+    return (
+      <div className="print-container">
+        <div className="print-page">
+          <h1 className="text-3xl font-bold mb-4">{lesson.title}</h1>
+          <h2 className="text-xl mb-6">A personalized lesson for {student?.name}, Grade {student?.grade}</h2>
+          <div className="print-content">
+            {renderContent(lesson.introduction)}
+          </div>
+          {lesson.images && lesson.images[0]?.url && (
+            <div className="print-image">
+              <img src={lesson.images[0].url} alt={lesson.images[0].alt} />
+              <p className="text-sm text-center mt-2">{lesson.images[0].description}</p>
+            </div>
+          )}
+        </div>
+
+        {lesson.sections.map((section, index) => (
+          <div key={index} className="print-page">
+            <h2 className="text-2xl font-bold mb-4">{section.title}</h2>
+            <div className="print-content">
+              {renderContent(section.content)}
+            </div>
+            
+            {section.example && (
+              <div className="print-example">
+                <h3 className="font-medium text-lg mb-2">Example:</h3>
+                <div>
+                  {section.example.split('\n').map((paragraph, i) => <p key={i} className="mb-2">{paragraph}</p>)}
+                </div>
+              </div>
+            )}
+            
+            {section.activity && (
+              <div className="print-activity">
+                <h3 className="font-medium text-lg mb-2">Practice Activity:</h3>
+                <p className="mb-2">{section.activity.description}</p>
+                <div className="print-solution">
+                  <h4 className="font-medium mb-1">Solution:</h4>
+                  <p>{section.activity.solution}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div className="print-page">
+          <h2 className="text-2xl font-bold mb-4">Summary</h2>
+          <div className="print-content">
+            {renderContent(lesson.summary)}
+          </div>
+          
+          <div className="print-learned">
+            <h3 className="font-medium text-lg mb-2">What you've learned:</h3>
+            <ul className="space-y-2 pl-5 list-disc">
+              {lesson.sections.map((section, index) => (
+                <li key={index}>
+                  <span className="font-medium">{section.title}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {lesson.worksheets && lesson.worksheets.length > 0 && (
+          <div className="print-page">
+            <h2 className="text-2xl font-semibold mb-4">Worksheets</h2>
+            {lesson.worksheets.map((worksheet, index) => (
+              <div key={index} className="mb-6">
+                <h3 className="text-xl mb-2">{worksheet.title}</h3>
+                <p className="mb-4">{worksheet.description}</p>
+                <div className="space-y-4">
+                  {worksheet.problems.map((problem, problemIndex) => (
+                    <div key={problemIndex} className="mb-4">
+                      <div className="flex items-start gap-2">
+                        <span className="font-bold">{problemIndex + 1}.</span>
+                        <div>
+                          <p className="mb-2">{problem.question}</p>
+                          {problem.difficulty && (
+                            <span className="text-xs font-medium">
+                              Difficulty: {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return <div className="container max-w-5xl mx-auto px-4 py-6 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" onClick={() => setStep('apiKey')}>
@@ -317,8 +426,8 @@ export function LessonGenerator() {
           Back
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()} className="hidden sm:flex">
-            <FilePlus className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={handlePrint} className="hidden sm:flex">
+            <Printer className="h-4 w-4 mr-2" />
             Print Lesson
           </Button>
           <Button onClick={handleQuizStart}>
@@ -328,7 +437,6 @@ export function LessonGenerator() {
         </div>
       </div>
       
-      {/* Progress tracking bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">Your progress</span>
