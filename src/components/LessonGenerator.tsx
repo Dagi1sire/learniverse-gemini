@@ -497,7 +497,7 @@ export function LessonGenerator() {
                       <h3 className="font-medium text-lg mb-4">What you've learned:</h3>
                       <ul className="space-y-3 pl-5 list-disc">
                         {lesson.sections.map((section, index) => <li key={index} className="text-primary-foreground">
-                            <span className="font-medium">{section.title}</span>
+                            <span className="font-medium text-cyan-900">{section.title}</span>
                           </li>)}
                       </ul>
                     </div>
